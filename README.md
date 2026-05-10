@@ -349,3 +349,7 @@ Full config example: [docs/config.example.toml](docs/config.example.toml).
 7. **`docker-compose.yml`** — volumes: `./data:/data`, `/Volumes/DeliRAID5/Media/Music:/music`; tty + stdin_open for interactive mode
 8. **`.dockerignore`** — excludes `data/` from build context
 9. **`sync_daily.sh`** + **`com.tiddl.sync-*.plist`** — launchd automation: Daily every 3 days, Radar on Sundays
+
+## Disclaimer
+
+This app is for personal use only and is not affiliated with Tidal. Users must ensure their use complies with Tidal's terms of service and local copyright laws. Downloaded tracks are for personal use and may not be shared or redistributed. The developer assumes no responsibility for misuse of this app.
