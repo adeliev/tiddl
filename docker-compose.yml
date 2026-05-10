@@ -1,0 +1,9 @@
+services:
+  tiddl:
+    build: .
+    container_name: tiddl
+    tty: true
+    stdin_open: true
+    volumes:
+      - ./data:/data
+      - /Volumes/DeliRAID5/Media/Music:/music

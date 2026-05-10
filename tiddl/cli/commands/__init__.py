@@ -2,12 +2,14 @@ from typer import Typer
 
 from .auth import auth_command
 from .download import download_command
-# from .export import export_command
+from .export import export_command
+from .sync import sync_command
 
 COMMANDS = [
     auth_command,
     download_command,
-    # export_command
+    export_command,
+    sync_command,
 ]
 
 

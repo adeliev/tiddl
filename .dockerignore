@@ -1,0 +1,10 @@
+data
+.git
+.github
+.vscode
+docs
+examples
+tests
+__pycache__
+*.pyc
+.venv
