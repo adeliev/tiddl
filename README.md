@@ -1,161 +1,161 @@
 # Tidal Downloader (Docker)
 
-Контейнеризированная версия [tiddl](https://github.com/oskvr37/tiddl) — CLI-утилиты для скачивания треков и экспорта коллекции из Tidal. Работает в OrbStack / Docker.
+Containerized version of [tiddl](https://github.com/oskvr37/tiddl) — a CLI tool for downloading tracks and exporting collections from Tidal. Runs in OrbStack / Docker.
 
-## Структура проекта
+## Project Structure
 
 ```
 tiddl/
 ├── Dockerfile
 ├── docker-compose.yml
 ├── .dockerignore
-├── data/                    # Персистентные данные (volume)
+├── data/                    # Persistent data (volume)
 │   ├── tiddl/
-│   │   ├── config.toml      # Конфигурация tiddl
-│   │   ├── auth.json        # Токены авторизации (создаётся при логине)
-│   │   └── api_cache.sqlite # Кэш API-запросов
-│   ├── Music/               # Скачанная музыка
-│   ├── mixes.txt            # Список URL миксов для daily-экспорта
-│   ├── artist_blocklist.txt # Блоклист артистов (один на строку)
-│   ├── artist_aliases.txt  # Алиасы артистов (Name = Alias)
-│   ├── all_tracks.txt       # Все треки из миксов (экспорт, без заблокированных)
-│   ├── DailyTidal.txt       # Случайная подборка 100 треков
-│   └── NewTidal.txt         # Новые треки с Tidal Home
-└── tiddl/                   # Исходный код (форк)
+│   │   ├── config.toml      # tiddl configuration
+│   │   ├── auth.json        # Auth tokens (created on login)
+│   │   └── api_cache.sqlite # API request cache
+│   ├── Music/               # Downloaded music
+│   ├── mixes.txt            # Mix URLs for daily export
+│   ├── artist_blocklist.txt # Blocked artists (one per line)
+│   ├── artist_aliases.txt   # Artist aliases (Name = Alias)
+│   ├── all_tracks.txt       # All tracks from mixes (filtered)
+│   ├── DailyTidal.txt       # Random selection of 100 tracks
+│   └── NewTidal.txt         # New tracks from Tidal Home
+└── tiddl/                   # Source code (fork)
 
-Внешние пути (монтируются как /music):
-├── DailyTidal/              # Скачанные daily-треки (не из библиотеки)
-├── ReleaseRadar/            # Скачанные radar-треки
+External paths (mounted as /music):
+├── DailyTidal/              # Downloaded daily tracks (not in library)
+├── ReleaseRadar/            # Downloaded radar tracks
 ├── Playlists/
 │   ├── Daily_Tidal.nsp      # Navidrome Smart Playlist
 │   └── Release Radar.nsp    # Navidrome Smart Playlist
-└── library_index.json       # Индекс существующей коллекции
+└── library_index.json       # Existing collection index
 ```
 
-## Сводка команд
+## Command Reference
 
-Все команды выполняются через `docker compose run --rm tiddl`. Флаг `--rm` удаляет контейнер после выполнения, данные сохраняются в `./data/`.
+All commands run via `docker compose run --rm tiddl`. The `--rm` flag removes the container after execution; data is preserved in `./data/`.
 
 ```bash
-# Авторизация
-tiddl auth login                                              # Первый вход
-tiddl auth refresh                                            # Обновить токен
+# Auth
+tiddl auth login                                              # First-time login
+tiddl auth refresh                                            # Refresh token
 
-# Экспорт
-tiddl export daily                                            # My Mix 1-8 → all_tracks.txt + DailyTidal.txt (100 треков)
-tiddl export new-tracks -o NewTidal.txt                       # New Tracks с Tidal Home → NewTidal.txt
-tiddl export playlist <url> -o tracks.txt                     # Микс/плейлист → текстовый файл
+# Export
+tiddl export daily                                            # My Mix 1-8 → all_tracks.txt + DailyTidal.txt (100 tracks)
+tiddl export new-tracks -o NewTidal.txt                       # New Tracks from Tidal Home → NewTidal.txt
+tiddl export playlist <url> -o tracks.txt                     # Mix/playlist → text file
 
-# Скачивание
-tiddl download url <url>                                      # Трек / альбом / плейлист / микс
-tiddl download -q normal -p /data/DailyTidal from-file <txt>  # Из текстового списка
+# Download
+tiddl download url <url>                                      # Track / album / playlist / mix
+tiddl download -q normal -p /data/DailyTidal from-file <txt>  # From text file
 
-# Синхронизация (экспорт + проверка библиотеки + скачивание + NSP)
-tiddl sync daily                                              # Daily Tidal одной командой
-tiddl sync radar                                              # Release Radar одной командой
+# Sync (export + library check + download + NSP)
+tiddl sync daily                                              # Daily Tidal in one command
+tiddl sync radar                                              # Release Radar in one command
 
-# Автоматизация (скрипт)
-./sync_daily.sh daily                                         # Запуск Daily вручную
-./sync_daily.sh radar                                         # Запуск Radar вручную
-./sync_daily.sh all                                           # Обе задачи
+# Automation (script)
+./sync_daily.sh daily                                         # Run Daily manually
+./sync_daily.sh radar                                         # Run Radar manually
+./sync_daily.sh all                                           # Both tasks
 ```
 
-## Запуск
+## Getting Started
 
-### Авторизация
+### Authentication
 
-При первом запуске требуется авторизация в Tidal:
+First-time use requires Tidal authentication:
 
 ```bash
 docker compose run --rm tiddl auth login
 ```
 
-Появится ссылка — откройте её в браузере и подтвердите вход. Токен сохранится в `data/tiddl/auth.json` и переиспользуется при последующих запусках.
+A link will appear — open it in a browser and confirm login. The token is saved to `data/tiddl/auth.json` and reused on subsequent runs.
 
-Обновить токен:
+Refresh token:
 
 ```bash
 docker compose run --rm tiddl auth refresh
 ```
 
-Выйти:
+Logout:
 
 ```bash
 docker compose run --rm tiddl auth logout
 ```
 
-### Скачивание
+### Downloading
 
-Скачать трек / альбом / плейлист / микс по URL:
+Download a track / album / playlist / mix by URL:
 
 ```bash
 docker compose run --rm tiddl download url "https://tidal.com/browse/track/103805726"
 docker compose run --rm tiddl download url "https://tidal.com/browse/album/103805723"
 ```
 
-Допускается сокращённый формат: `track/103805726`, `album/103805723`.
+Short format is also accepted: `track/103805726`, `album/103805723`.
 
-Дополнительные опции скачивания:
+Additional download options:
 
 ```bash
-# Качество (low / normal / high / max)
+# Quality (low / normal / high / max)
 docker compose run --rm tiddl download url <url> -q max
 
-# Кастомный путь
+# Custom path
 docker compose run --rm tiddl download url <url> -p "/data/Music/Albums"
 
-# Шаблон имени файла
+# Filename template
 docker compose run --rm tiddl download url <url> -o "{album.artist}/{album.title}/{item.number:02d}. {item.title}"
 
-# Скачать из избранного
+# Download from favorites
 docker compose run --rm tiddl download fav
 
-# Поиск и скачивание
+# Search and download
 docker compose run --rm tiddl download search "Pink Floyd"
 ```
 
-Музыка сохраняется в `data/Music/`.
+Music is saved to `data/Music/`.
 
-### Скачивание из текстового списка
+### Download from Text File
 
-Команда `download from-file` читает файл с треками в формате `artist - title` (один на строку), ищет каждый на Tidal и скачивает первый совпадающий результат.
+The `download from-file` command reads a file with tracks in `artist - title` format (one per line), searches Tidal for each entry, and downloads the first match.
 
 ```bash
-# DailyTidal.txt → папка DailyTidal, качество Normal (AAC 320kbps)
+# DailyTidal.txt → DailyTidal folder, Normal quality (AAC 320kbps)
 docker compose run --rm tiddl download -q normal -p /data/DailyTidal -o "{item.artists} - {item.title}" --dolby-atmos allow from-file DailyTidal.txt
 
-# NewTidal.txt → папка NewTidal, качество Normal
+# NewTidal.txt → NewTidal folder, Normal quality
 docker compose run --rm tiddl download -q normal -p /data/NewTidal -o "{item.artists} - {item.title}" --dolby-atmos allow from-file NewTidal.txt
 ```
 
-Опции скачивания задаются на уровне команды `download`:
+Download options are set at the `download` command level:
 
-| Опция | Описание |
-|-------|----------|
+| Option | Description |
+|--------|-------------|
 | `-q normal` | AAC 320kbps (.m4a) |
 | `-q high` | FLAC 16-bit |
-| `-q max` | FLAC до 24-bit |
-| `-p /data/имя` | Папка для скачивания |
-| `-o "шаблон"` | Шаблон имени файла |
-| `--dolby-atmos allow` | Не пропускать Dolby Atmos треки |
+| `-q max` | FLAC up to 24-bit |
+| `-p /data/name` | Download directory |
+| `-o "template"` | Filename template |
+| `--dolby-atmos allow` | Don't skip Dolby Atmos tracks |
 
-### Экспорт треков
+### Export
 
-Команда `export` формирует текстовые списки треков в формате `artist - title`.
+The `export` command generates text lists of tracks in `artist - title` format.
 
-#### Экспорт плейлиста или микса
+#### Export a Playlist or Mix
 
 ```bash
-# По URL (автоматически определяет тип: playlist / mix)
+# By URL (auto-detects type: playlist / mix)
 docker compose run --rm tiddl export playlist "https://tidal.com/mix/002e97fa4491895af2359ec016eb34" -o tracks.txt
 
-# По UUID
+# By UUID
 docker compose run --rm tiddl export playlist "002e97fa4491895af2359ec016eb34" -o tracks.txt
 ```
 
-#### Daily-подборка из миксов
+#### Daily Selection from Mixes
 
-Создайте файл `data/mixes.txt` со ссылками на миксы (одна на строку):
+Create `data/mixes.txt` with mix URLs (one per line):
 
 ```
 https://tidal.com/mix/002031a111d26d855f13df60ef8035
@@ -163,155 +163,155 @@ https://tidal.com/mix/0020a08efcb74f0b86c8363bf5efae
 https://tidal.com/mix/002a3c2e11ce412d0ca12bb451730f
 ```
 
-При необходимости создайте файл `data/artist_blocklist.txt` с именами артистов (один на строку), чьи треки нужно исключить:
+Optionally create `data/artist_blocklist.txt` with artist names to exclude (one per line):
 
 ```
 Taylor Swift
 Eminem
 ```
 
-Запустите экспорт:
+Run the export:
 
 ```bash
 docker compose run --rm tiddl export daily
 ```
 
-Результат:
-- `data/all_tracks.txt` — уникальные треки из всех миксов (без заблокированных артистов)
-- `data/DailyTidal.txt` — 100 случайных треков из отфильтрованного списка
+Result:
+- `data/all_tracks.txt` — unique tracks from all mixes (excluding blocklisted artists)
+- `data/DailyTidal.txt` — 100 random tracks from the filtered list
 
-Опции:
+Options:
 
-| Опция | По умолчанию | Описание |
-|-------|-------------|----------|
-| `-i` | `mixes.txt` | Файл со списком URL |
-| `-n` | `100` | Количество треков в daily-подборке |
-| `-o` | `all_tracks.txt` | Файл со всеми треками |
-| `-d` | `DailyTidal.txt` | Файл с daily-подборкой |
-| `-b` | `artist_blocklist.txt` | Файл с блоклистом артистов |
+| Option | Default | Description |
+|--------|---------|-------------|
+| `-i` | `mixes.txt` | File with URL list |
+| `-n` | `100` | Number of tracks in daily selection |
+| `-o` | `all_tracks.txt` | File with all tracks |
+| `-d` | `DailyTidal.txt` | File with daily selection |
+| `-b` | `artist_blocklist.txt` | Artist blocklist file |
 
-Пример с кастомными параметрами:
+Example with custom parameters:
 
 ```bash
 docker compose run --rm tiddl export daily -i my_mixes.txt -n 50 -o full.txt -d daily50.txt -b my_blocklist.txt
 ```
 
-#### Новые треки (New Tracks Suggestions)
+#### New Tracks Suggestions
 
-Экспортирует список "New Tracks" с главной страницы Tidal:
+Exports the "New Tracks" list from the Tidal home page:
 
 ```bash
 docker compose run --rm tiddl export new-tracks -o NewTidal.txt
 ```
 
-### Синхронизация (sync daily)
+### Sync Daily
 
-Команда `sync daily` — полноценный пайплайн для daily-подборки:
+The `sync daily` command is a full pipeline for the daily playlist:
 
-1. Читает `DailyTidal.txt` (список `artist - title`)
-2. Проверяет каждый трек по `library_index.json` — если трек уже в коллекции, он не скачивается, но добавляется в плейлист по прямому пути
-3. Недостающие треки ищутся на Tidal и скачиваются в папку `/music/DailyTidal/`
-4. Генерируется Navidrome Smart Playlist (`Daily_Tidal.nsp`) с ссылками на оба типа треков
+1. Reads `DailyTidal.txt` (list of `artist - title`)
+2. Checks each track against `library_index.json` — if already in the collection, it's not downloaded but added to the playlist by direct path
+3. Missing tracks are searched on Tidal and downloaded to `/music/DailyTidal/`
+4. Generates a Navidrome Smart Playlist (`Daily_Tidal.nsp`) with references to both types of tracks
 
-При поиске в библиотеке нормализация совпадает с `scan_library.py` из spotify-soulseek-bridge: убираются пометки (Remastered, Radio Edit, feat. и т.д.), ключ формируется как `artist - title` в нижнем регистре.
+Library matching uses the same normalization as `scan_library.py` from spotify-soulseek-bridge: qualifiers like Remastered, Radio Edit, feat. etc. are stripped, and the key is formed as lowercase `artist - title`.
 
-Если у артиста есть альтернативное имя (переименование группы, транслитерация), создайте файл `data/artist_aliases.txt`:
+If an artist has an alternative name (rename, transliteration), create `data/artist_aliases.txt`:
 
 ```
 Electric Callboy = Eskimo Callboy
 ```
 
-Формат: `Имя = Алиас`, по одной паре на строку. Алиасы двунаправленные.
+Format: `Name = Alias`, one pair per line. Aliases are bidirectional.
 
 ```bash
 docker compose run --rm tiddl sync daily
 ```
 
-Опции:
+Options:
 
-| Опция | По умолчанию | Описание |
-|-------|-------------|----------|
-| `-i` | `DailyTidal.txt` | Входной файл со списком треков |
-| `-l` | `/music/library_index.json` | Путь к индексу библиотеки |
-| `-a` | `artist_aliases.txt` | Файл алиасов артистов |
-| `-p` | `/music/DailyTidal` | Папка для скачивания новых треков |
-| `--music-base` | `/Volumes/DeliRAID5/Media/Music` | Базовый путь Navidrome (обрезается из путей в NSP) |
-| `-n` | `/music/Playlists/Daily_Tidal.nsp` | Путь к NSP-плейлисту |
-| `-f` | `DailyTidal/` | Префикс папки в NSP для скачанных треков |
-| `-q` | `normal` | Качество скачивания |
-| `-t` | `4` | Количество потоков скачивания |
-| `--dolby-atmos` | `allow` | Фильтр Dolby Atmos |
+| Option | Default | Description |
+|--------|---------|-------------|
+| `-i` | `DailyTidal.txt` | Input file with track list |
+| `-l` | `/music/library_index.json` | Path to library index |
+| `-a` | `artist_aliases.txt` | Artist aliases file |
+| `-p` | `/music/DailyTidal` | Directory for new downloads |
+| `--music-base` | `/Volumes/DeliRAID5/Media/Music` | Navidrome base path (stripped from NSP paths) |
+| `-n` | `/music/Playlists/Daily_Tidal.nsp` | Path to NSP playlist |
+| `-f` | `DailyTidal/` | NSP folder prefix for downloaded tracks |
+| `-q` | `normal` | Download quality |
+| `-t` | `4` | Concurrent download threads |
+| `--dolby-atmos` | `allow` | Dolby Atmos filter |
 
-Плейлист содержит:
-- `startsWith: DailyTidal/` — все скачанные треки
-- `is: <путь из библиотеки>` — треки, найденные в коллекции
+The playlist contains:
+- `startsWith: DailyTidal/` — all downloaded tracks
+- `is: <library path>` — tracks found in the collection
 
-### Синхронизация (sync radar)
+### Sync Radar
 
-Команда `sync radar` — пайплайн для Release Radar:
+The `sync radar` command is a pipeline for Release Radar:
 
-1. Забирает "New Tracks" с главной Tidal (встроенный `export new-tracks`)
-2. Проверяет каждый трек по `library_index.json`
-3. Скачивает недостающие в `/music/ReleaseRadar/`
-4. Обновляет NSP-плейлист
+1. Fetches "New Tracks" from the Tidal home page (built-in `export new-tracks`)
+2. Checks each track against `library_index.json`
+3. Downloads missing tracks to `/music/ReleaseRadar/`
+4. Updates the NSP playlist
 
-Всё одной командой:
+All in one command:
 
 ```bash
 docker compose run --rm tiddl sync radar
 ```
 
-Опции те же, что и у `sync daily`, но с другими значениями по умолчанию:
+Options are the same as `sync daily`, but with different defaults:
 
-| Опция | По умолчанию | Описание |
-|-------|-------------|----------|
-| `-o` | `NewTidal.txt` | Временный файл экспорта |
-| `-p` | `/music/ReleaseRadar` | Папка для скачивания |
-| `-n` | `/music/Playlists/Release Radar.nsp` | Путь к NSP |
-| `-f` | `ReleaseRadar/` | Префикс папки в NSP |
+| Option | Default | Description |
+|--------|---------|-------------|
+| `-o` | `NewTidal.txt` | Temp export file |
+| `-p` | `/music/ReleaseRadar` | Download directory |
+| `-n` | `/music/Playlists/Release Radar.nsp` | Path to NSP |
+| `-f` | `ReleaseRadar/` | NSP folder prefix |
 
-## Автоматизация
+## Automation
 
-Скрипт `sync_daily.sh` принимает аргумент: `daily`, `radar` или `all`.
+The `sync_daily.sh` script accepts an argument: `daily`, `radar`, or `all`.
 
-| Задача | Расписание | Команда |
-|--------|-----------|---------|
-| Daily (`export daily` + `sync daily`) | Каждый день в 5:00, выполняется раз в 3 дня | `sync_daily.sh daily` |
-| Radar (`sync radar`) | Каждое воскресенье в 5:00 | `sync_daily.sh radar` |
-| Обе сразу | — | `sync_daily.sh all` |
+| Task | Schedule | Command |
+|------|----------|---------|
+| Daily (`export daily` + `sync daily`) | Every day at 5:00, runs every 3 days | `sync_daily.sh daily` |
+| Radar (`sync radar`) | Every Sunday at 5:00 | `sync_daily.sh radar` |
+| Both | — | `sync_daily.sh all` |
 
-Лог пишется в `data/sync.log`.
+Logs are written to `data/sync.log`.
 
-### Установка через launchd
+### Setup via launchd
 
-Два plist — отдельное расписание для каждой задачи:
+Two plist files — a separate schedule for each task:
 
 ```bash
-# Установить оба
+# Install both
 cp com.tiddl.sync-daily.plist com.tiddl.sync-radar.plist ~/Library/LaunchAgents/
 launchctl load ~/Library/LaunchAgents/com.tiddl.sync-daily.plist
 launchctl load ~/Library/LaunchAgents/com.tiddl.sync-radar.plist
 
-# Проверить статус
+# Check status
 launchctl list | grep tiddl
 
-# Удалить
+# Remove
 launchctl unload ~/Library/LaunchAgents/com.tiddl.sync-daily.plist
 launchctl unload ~/Library/LaunchAgents/com.tiddl.sync-radar.plist
 rm ~/Library/LaunchAgents/com.tiddl.sync-daily.plist ~/Library/LaunchAgents/com.tiddl.sync-radar.plist
 ```
 
-### Принудительный запуск
+### Manual Run
 
 ```bash
-/Volumes/DeliRAID5/Dockers/tiddl/sync_daily.sh daily   # только Daily
-/Volumes/DeliRAID5/Dockers/tiddl/sync_daily.sh radar   # только Radar
-/Volumes/DeliRAID5/Dockers/tiddl/sync_daily.sh all     # обе задачи
+/Volumes/DeliRAID5/Dockers/tiddl/sync_daily.sh daily   # Daily only
+/Volumes/DeliRAID5/Dockers/tiddl/sync_daily.sh radar   # Radar only
+/Volumes/DeliRAID5/Dockers/tiddl/sync_daily.sh all     # Both tasks
 ```
 
-## Конфигурация
+## Configuration
 
-Файл `data/tiddl/config.toml`. Ключевые параметры:
+File `data/tiddl/config.toml`. Key parameters:
 
 ```toml
 [download]
@@ -324,28 +324,28 @@ threads_count = 4
 enable = true
 ```
 
-Полный пример конфигурации — в [docs/config.example.toml](docs/config.example.toml).
+Full config example: [docs/config.example.toml](docs/config.example.toml).
 
-## Качество аудио
+## Audio Quality
 
-| Качество | Формат | Параметры |
-|----------|--------|-----------|
+| Quality | Format | Parameters |
+|---------|--------|------------|
 | LOW | .m4a | 96 kbps |
 | NORMAL | .m4a | 320 kbps |
 | HIGH | .flac | 16-bit, 44.1 kHz |
-| MAX | .flac | до 24-bit, 192 kHz |
+| MAX | .flac | up to 24-bit, 192 kHz |
 
-## Внесённые изменения в оригинальный tiddl
+## Changes from Upstream tiddl
 
-1. **`tiddl/core/auth/models.py`** — поле `facebookUid` сделано опциональным (`Optional[int] = None`), т.к. Tidal API перестал возвращать его
-2. **`tiddl/cli/commands/export.py`** — добавлена команда `export` с подкомандами:
-   - `playlist` — экспорт плейлиста/микса в текстовый файл
-   - `daily` — экспорт треков из нескольких миксов + случайная подборка
-   - `new-tracks` — экспорт "New Tracks" с главной страницы Tidal
-3. **`tiddl/cli/commands/subcommands/from_file.py`** — добавлена подкоманда `download from-file`: скачивание треков из текстового списка `artist - title`
-4. **`tiddl/cli/commands/__init__.py`** — зарегистрированы команды `export` и `sync`
-5. **`tiddl/cli/commands/sync.py`** — добавлены команды `sync daily` и `sync radar`: проверка по library_index.json, скачивание недостающих треков, генерация NSP-плейлистов
-6. **`Dockerfile`** — обновлён: Python 3.13 Alpine, ffmpeg, `TIDDL_PATH=/data/tiddl`, `ENTRYPOINT ["tiddl"]`
-7. **`docker-compose.yml`** — volumes: `./data:/data`, `/Volumes/DeliRAID5/Media/Music:/music`; tty + stdin_open для интерактива
-8. **`.dockerignore`** — исключает `data/` из контекста сборки
-9. **`sync_daily.sh`** + **`com.tiddl.sync-*.plist`** — автоматизация через launchd: Daily каждые 3 дня, Radar по воскресеньям
+1. **`tiddl/core/auth/models.py`** — made `facebookUid` field optional (`Optional[int] = None`) since Tidal API stopped returning it
+2. **`tiddl/cli/commands/export.py`** — added `export` command with subcommands:
+   - `playlist` — export playlist/mix to a text file
+   - `daily` — export tracks from multiple mixes + random selection
+   - `new-tracks` — export "New Tracks" from Tidal home page
+3. **`tiddl/cli/commands/subcommands/from_file.py`** — added `download from-file` subcommand: download tracks from a text list `artist - title`
+4. **`tiddl/cli/commands/__init__.py`** — registered `export` and `sync` commands
+5. **`tiddl/cli/commands/sync.py`** — added `sync daily` and `sync radar` commands: library check via library_index.json, download missing tracks, generate NSP playlists
+6. **`Dockerfile`** — updated: Python 3.13 Alpine, ffmpeg, `TIDDL_PATH=/data/tiddl`, `ENTRYPOINT ["tiddl"]`
+7. **`docker-compose.yml`** — volumes: `./data:/data`, `/Volumes/DeliRAID5/Media/Music:/music`; tty + stdin_open for interactive mode
+8. **`.dockerignore`** — excludes `data/` from build context
+9. **`sync_daily.sh`** + **`com.tiddl.sync-*.plist`** — launchd automation: Daily every 3 days, Radar on Sundays
