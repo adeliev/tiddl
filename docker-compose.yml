@@ -2,8 +2,14 @@ services:
   tiddl:
     build: .
     container_name: tiddl
-    tty: true
-    stdin_open: true
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Bratislava
     volumes:
       - ./data:/data
       - /Volumes/DeliRAID5/Media/Music:/music
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"

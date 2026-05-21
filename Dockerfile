@@ -14,4 +14,4 @@ ENV TIDDL_PATH=/data/tiddl
 
 WORKDIR /data
 
-ENTRYPOINT ["tiddl"]
+CMD ["python", "/app/scheduler.py"]

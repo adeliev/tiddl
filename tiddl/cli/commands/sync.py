@@ -1,6 +1,7 @@
 import asyncio
 import json
 import re
+import shutil
 import typer
 from pathlib import Path
 from logging import getLogger
@@ -21,6 +22,15 @@ sync_command = typer.Typer(name="sync")
 
 log = getLogger(__name__)
 console = Console()
+
+
+def _cleanup_dir(directory: Path, console: Console) -> None:
+    if directory.is_dir():
+        count = sum(1 for _ in directory.iterdir())
+        if count:
+            shutil.rmtree(directory)
+            console.print(f"[cyan]Cleared {count} items from {directory}[/cyan]")
+    directory.mkdir(parents=True, exist_ok=True)
 
 
 def _clean_string(text: str) -> str:
@@ -348,6 +358,7 @@ def daily(
     )
 
     search_hits = _search_tidal(ctx, to_download)
+    _cleanup_dir(download_dir, ctx.obj.console)
     _search_and_download(ctx, to_download, search_hits, download_dir, quality, threads, dolby_atmos)
 
     _write_nsp(nsp_path, "Daily Tidal", nsp_folder, lib_matches, music_base)
@@ -412,20 +423,23 @@ def radar(
 
     ctx.invoke(refresh)
 
-    ctx.obj.console.print("[cyan]Fetching new tracks from Tidal home...[/cyan]")
+    ctx.obj.console.print("[cyan]Fetching new tracks from Tidal...[/cyan]")
 
     client = ctx.obj.api.client
+
     res = client.session.get(
-        f"{API_URL}/pages/home",
+        f"{API_URL}/pages/NEW_TRACK_SUGGESTIONS/view-all",
         params={
             "countryCode": ctx.obj.api.country_code,
             "deviceType": "BROWSER",
             "locale": "en_US",
+            "limit": 1,
+            "offset": 0,
         },
     )
 
     if res.status_code != 200:
-        ctx.obj.console.print(f"[bold red]Failed to load home page: {res.status_code}[/bold red]")
+        ctx.obj.console.print(f"[bold red]Failed to load new tracks: {res.status_code}[/bold red]")
         raise typer.Exit(1)
 
     home_data = res.json()
@@ -435,7 +449,7 @@ def radar(
 
     for row in home_data.get("rows", []):
         for mod in row.get("modules", []):
-            if mod.get("type") == "TRACK_LIST" and "new" in mod.get("title", "").lower():
+            if mod.get("type") == "TRACK_LIST":
                 pl = mod.get("pagedList", {})
                 data_api_path = pl.get("dataApiPath")
                 total_items = pl.get("totalNumberOfItems", 0)
@@ -444,7 +458,11 @@ def radar(
             break
 
     if not data_api_path:
-        ctx.obj.console.print("[bold red]'New Tracks' module not found on home page[/bold red]")
+        ctx.obj.console.print("[bold red]'New Tracks' module not found[/bold red]")
+        raise typer.Exit(1)
+
+    if not total_items:
+        ctx.obj.console.print("[bold red]No new tracks found[/bold red]")
         raise typer.Exit(1)
 
     ctx.obj.console.print(f"[cyan]Found 'New Tracks' — {total_items} items[/cyan]")
@@ -470,8 +488,9 @@ def radar(
         if not items:
             break
         for item in items:
-            artist = ", ".join(a["name"] for a in item.get("artists", []))
-            title = item.get("title", "")
+            track = item.get("item", item)
+            artist = ", ".join(a["name"] for a in track.get("artists", []))
+            title = track.get("title", "")
             if artist and title:
                 lines.append(f"{artist} - {title}")
         offset += limit
@@ -501,6 +520,7 @@ def radar(
     )
 
     search_hits = _search_tidal(ctx, to_download)
+    _cleanup_dir(download_dir, ctx.obj.console)
     _search_and_download(ctx, to_download, search_hits, download_dir, quality, threads, dolby_atmos)
 
     _write_nsp(nsp_path, "Release Radar", nsp_folder, lib_matches, music_base)

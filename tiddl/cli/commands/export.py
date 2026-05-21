@@ -198,16 +198,18 @@ def new_tracks(
     client = ctx.obj.api.client
 
     res = client.session.get(
-        f"{API_URL}/pages/home",
+        f"{API_URL}/pages/NEW_TRACK_SUGGESTIONS/view-all",
         params={
             "countryCode": ctx.obj.api.country_code,
             "deviceType": "BROWSER",
             "locale": "en_US",
+            "limit": 1,
+            "offset": 0,
         },
     )
 
     if res.status_code != 200:
-        ctx.obj.console.print(f"[bold red]Failed to load home page: {res.status_code}[/bold red]")
+        ctx.obj.console.print(f"[bold red]Failed to load new tracks: {res.status_code}[/bold red]")
         raise typer.Exit(1)
 
     home_data = res.json()
@@ -217,7 +219,7 @@ def new_tracks(
 
     for row in home_data.get("rows", []):
         for mod in row.get("modules", []):
-            if mod.get("type") == "TRACK_LIST" and "new" in mod.get("title", "").lower():
+            if mod.get("type") == "TRACK_LIST":
                 pl = mod.get("pagedList", {})
                 data_api_path = pl.get("dataApiPath")
                 total_items = pl.get("totalNumberOfItems", 0)
@@ -226,7 +228,11 @@ def new_tracks(
             break
 
     if not data_api_path:
-        ctx.obj.console.print("[bold red]'New Tracks' module not found on home page[/bold red]")
+        ctx.obj.console.print("[bold red]'New Tracks' module not found[/bold red]")
+        raise typer.Exit(1)
+
+    if not total_items:
+        ctx.obj.console.print("[bold red]No new tracks found[/bold red]")
         raise typer.Exit(1)
 
     ctx.obj.console.print(f"[cyan]Found 'New Tracks' — {total_items} items[/cyan]")
@@ -329,7 +335,10 @@ def _get_page_tracks(client, data_api_path: str, country_code: str, total: int) 
             break
 
         for item in items:
-            tracks.append(item)
+            if "item" in item:
+                tracks.append(item["item"])
+            else:
+                tracks.append(item)
 
         offset += limit
 
