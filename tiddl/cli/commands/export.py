@@ -1,4 +1,6 @@
+import json
 import random
+import time
 import typer
 from pathlib import Path
 from logging import getLogger
@@ -90,6 +92,14 @@ def daily(
         Path,
         typer.Option("-b", "--blocklist", help="Text file with blocked artist names, one per line."),
     ] = Path("artist_blocklist.txt"),
+    history: Annotated[
+        Path,
+        typer.Option("--history", help="JSON file tracking previously selected tracks for dedup."),
+    ] = Path("/data/daily_history.json"),
+    history_days: Annotated[
+        int,
+        typer.Option("--history-days", help="Days to exclude a track after last selection."),
+    ] = 3,
 ):
     """
     Export tracks from multiple mixes/playlists, then pick random tracks for a daily list.
@@ -175,11 +185,53 @@ def daily(
         f"[bold green]Exported {len(all_tracks)} unique tracks to {output}[/bold green]"
     )
 
-    pick_count = min(count, len(all_tracks))
-    picked = random.sample(all_tracks, pick_count)
+    # Exclude tracks selected within --history-days
+    pool = all_tracks
+    if history.exists():
+        hist_data = json.loads(history.read_text(encoding="utf-8"))
+        now_ts = time.time()
+        pool = [
+            t for t in all_tracks
+            if str(t.id) not in hist_data
+            or (now_ts - hist_data[str(t.id)]["last_selected"]) / 86400 > history_days
+        ]
+        skipped = len(all_tracks) - len(pool)
+        if skipped:
+            ctx.obj.console.print(
+                f"[cyan]Skipped {skipped} tracks last selected <{history_days}d ago[/cyan]"
+            )
+
+    pick_count = min(count, len(pool))
+    picked = random.sample(pool, pick_count)
     _write_tracks(picked, daily)
     ctx.obj.console.print(
         f"[bold green]Daily selection: {pick_count} tracks saved to {daily}[/bold green]"
+    )
+
+    # Update history
+    now_ts = time.time()
+    hist_data = {}
+    if history.exists():
+        hist_data = json.loads(history.read_text(encoding="utf-8"))
+    # Purge entries older than 2x history_days
+    cutoff = now_ts - history_days * 2 * 86400
+    hist_data = {
+        k: v for k, v in hist_data.items()
+        if v.get("last_selected", 0) > cutoff
+    }
+    for t in picked:
+        hist_data[str(t.id)] = {
+            "artist": ", ".join(a.name for a in t.artists),
+            "title": t.title,
+            "last_selected": now_ts,
+        }
+    history.parent.mkdir(parents=True, exist_ok=True)
+    history.write_text(
+        json.dumps(hist_data, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    ctx.obj.console.print(
+        f"[dim]History: {len(picked)} added ({len(hist_data)} tracked)[/dim]"
     )
 
 
